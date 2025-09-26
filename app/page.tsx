@@ -11,9 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AuthModal } from "@/components/auth/AuthModal"
 import { DebugInfo } from "@/components/DebugInfo"
-import { useAuth } from "@/hooks/useAuth"
+import { RoadmapManager } from "@/components/RoadmapManager"
 import { useRoadmap } from "@/hooks/useRoadmap"
 import {
   CheckCircle2,
@@ -30,8 +29,6 @@ import {
   Route,
   Target,
   TrendingUp,
-  User,
-  LogOut,
   Loader2,
 } from "lucide-react"
 
@@ -40,7 +37,7 @@ interface RoadmapItem {
   title: string
   address: string
   description: string
-  hours?: string
+  hours?: string | null
   completed: boolean
   category: "pickup" | "stop" | "fuel" | "food" | "hotel" | "visit"
   cost?: number
@@ -145,7 +142,6 @@ const categoryIcons = {
 }
 
 export default function TravelRoadmap() {
-  const { user, loading: authLoading, signOut } = useAuth()
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<RoadmapItem>>({})
   const [showAddForm, setShowAddForm] = useState(false)
@@ -167,9 +163,9 @@ export default function TravelRoadmap() {
     date: new Date().toISOString().split("T")[0],
   })
 
-  // Use the default roadmap ID for demo purposes
-  const roadmapId = "550e8400-e29b-41d4-a716-446655440000"
-  const userId = user?.id || "00000000-0000-0000-0000-000000000000"
+  // State for managing current roadmap - using demo user ID
+  const [currentRoadmapId, setCurrentRoadmapId] = useState("550e8400-e29b-41d4-a716-446655440000")
+  const userId = "00000000-0000-0000-0000-000000000000" // Demo user ID
 
   const {
     roadmap,
@@ -192,9 +188,14 @@ export default function TravelRoadmap() {
     addExpense,
     updateExpense,
     deleteExpense,
-  } = useRoadmap({ roadmapId, userId })
+  } = useRoadmap({ roadmapId: currentRoadmapId, userId })
 
-  const loading = authLoading || dataLoading
+  const loading = dataLoading
+
+  // Handle roadmap selection
+  const handleRoadmapSelect = (roadmapId: string) => {
+    setCurrentRoadmapId(roadmapId)
+  }
 
   const startEditing = (item: RoadmapItem) => {
     setEditingItem(item.id)
@@ -238,7 +239,7 @@ export default function TravelRoadmap() {
         title: newItemForm.title,
         address: newItemForm.address,
         description: newItemForm.description || "",
-        hours: newItemForm.hours,
+        hours: newItemForm.hours || null,
         category: newItemForm.category as RoadmapItem["category"],
         completed: false,
         cost: newItemForm.cost || 0,
@@ -363,42 +364,27 @@ export default function TravelRoadmap() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-7xl">
+        {/* Roadmap Manager Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <div className="lg:col-span-1">
+            <RoadmapManager 
+              onRoadmapSelect={handleRoadmapSelect}
+              currentRoadmapId={currentRoadmapId}
+            />
+          </div>
+          <div className="lg:col-span-3">
         <div className="text-center mb-6 sm:mb-12">
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             <Route className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-            <h1 className="text-2xl sm:text-4xl font-bold text-foreground text-balance">Travel Roadmap</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-foreground text-balance">
+              {roadmap?.title || "Travel Roadmap"}
+            </h1>
           </div>
-          <p className="text-muted-foreground text-base sm:text-lg mb-2">Your journey from Sterling, VA to Blacksburg, VA</p>
+          <p className="text-muted-foreground text-base sm:text-lg mb-2">
+            {roadmap?.description || "Your journey from Sterling, VA to Blacksburg, VA"}
+          </p>
           <p className="text-xs sm:text-sm text-muted-foreground">Track your progress and manage costs efficiently</p>
-          
-          {/* Auth Section */}
-          <div className="flex items-center justify-center gap-4 mt-4">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>{user.email}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => signOut()}
-                  className="text-xs"
-                >
-                  <LogOut className="h-3 w-3 mr-1" />
-                  Sign Out
-                </Button>
-              </div>
-            ) : (
-              <AuthModal>
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  Sign In
-                </Button>
-              </AuthModal>
-            )}
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -890,7 +876,7 @@ export default function TravelRoadmap() {
                             className="text-xs sm:text-sm"
                           />
                         ) : (
-                          <span>{item.hours}</span>
+                          <span>{item.hours || ""}</span>
                         )}
                       </div>
                     )}
@@ -1010,6 +996,8 @@ export default function TravelRoadmap() {
             </div>
           </CardContent>
         </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

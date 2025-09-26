@@ -55,8 +55,8 @@ ALTER TABLE roadmap_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for roadmaps
-CREATE POLICY "Users can view their own roadmaps" ON roadmaps
-    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own roadmaps and sample" ON roadmaps
+    FOR SELECT USING (auth.uid() = user_id OR id = '550e8400-e29b-41d4-a716-446655440000');
 
 CREATE POLICY "Users can insert their own roadmaps" ON roadmaps
     FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -73,7 +73,7 @@ CREATE POLICY "Users can view roadmap items for their roadmaps" ON roadmap_items
         EXISTS (
             SELECT 1 FROM roadmaps 
             WHERE roadmaps.id = roadmap_items.roadmap_id 
-            AND roadmaps.user_id = auth.uid()
+            AND (roadmaps.user_id = auth.uid() OR roadmaps.id = '550e8400-e29b-41d4-a716-446655440000')
         )
     );
 
@@ -110,7 +110,7 @@ CREATE POLICY "Users can view expenses for their roadmaps" ON expenses
         EXISTS (
             SELECT 1 FROM roadmaps 
             WHERE roadmaps.id = expenses.roadmap_id 
-            AND roadmaps.user_id = auth.uid()
+            AND (roadmaps.user_id = auth.uid() OR roadmaps.id = '550e8400-e29b-41d4-a716-446655440000')
         )
     );
 
