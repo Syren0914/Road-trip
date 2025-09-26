@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AuthModal } from "@/components/auth/AuthModal"
+import { useAuth } from "@/hooks/useAuth"
+import { useRoadmap } from "@/hooks/useRoadmap"
 import {
   CheckCircle2,
   Circle,
@@ -26,6 +29,9 @@ import {
   Route,
   Target,
   TrendingUp,
+  User,
+  LogOut,
+  Loader2,
 } from "lucide-react"
 
 interface RoadmapItem {
@@ -138,8 +144,7 @@ const categoryIcons = {
 }
 
 export default function TravelRoadmap() {
-  const [roadmapItems, setRoadmapItems] = useState<RoadmapItem[]>(initialRoadmap)
-  const [completedCount, setCompletedCount] = useState(0)
+  const { user, loading: authLoading, signOut } = useAuth()
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<RoadmapItem>>({})
   const [showAddForm, setShowAddForm] = useState(false)
@@ -152,9 +157,7 @@ export default function TravelRoadmap() {
     cost: 0,
   })
 
-  const [budget, setBudget] = useState(500)
   const [editingBudget, setEditingBudget] = useState(false)
-  const [costItems, setCostItems] = useState<CostItem[]>([])
   const [showAddCostForm, setShowAddCostForm] = useState(false)
   const [newCostForm, setNewCostForm] = useState<Partial<CostItem>>({
     title: "",
@@ -163,19 +166,34 @@ export default function TravelRoadmap() {
     date: new Date().toISOString().split("T")[0],
   })
 
-  useEffect(() => {
-    const completed = roadmapItems.filter((item) => item.completed).length
-    setCompletedCount(completed)
-  }, [roadmapItems])
+  // Use the default roadmap ID for demo purposes
+  const roadmapId = "550e8400-e29b-41d4-a716-446655440000"
+  const userId = user?.id || "00000000-0000-0000-0000-000000000000"
 
-  const totalRoadmapCost = roadmapItems.reduce((sum, item) => sum + (item.cost || 0), 0)
-  const completedRoadmapCost = roadmapItems
-    .filter((item) => item.completed)
-    .reduce((sum, item) => sum + (item.cost || 0), 0)
+  const {
+    roadmap,
+    roadmapItems,
+    expenses,
+    loading: dataLoading,
+    error,
+    completedCount,
+    totalRoadmapCost,
+    completedRoadmapCost,
+    totalExpenses,
+    totalSpent,
+    remainingBudget,
+    progressPercentage,
+    updateRoadmap,
+    addRoadmapItem,
+    updateRoadmapItem,
+    deleteRoadmapItem,
+    toggleRoadmapItemComplete,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+  } = useRoadmap({ roadmapId, userId })
 
-  const totalAdditionalCosts = costItems.filter((item) => item.completed).reduce((sum, item) => sum + item.amount, 0)
-  const totalSpent = completedRoadmapCost + totalAdditionalCosts
-  const remainingBudget = budget - totalSpent
+  const loading = authLoading || dataLoading
 
   const startEditing = (item: RoadmapItem) => {
     setEditingItem(item.id)
@@ -188,25 +206,22 @@ export default function TravelRoadmap() {
     })
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingItem) return
 
-    setRoadmapItems((items) =>
-      items.map((item) =>
-        item.id === editingItem
-          ? {
-              ...item,
-              title: editForm.title || item.title,
-              address: editForm.address || item.address,
-              description: editForm.description || item.description,
-              hours: editForm.hours || item.hours,
-              cost: editForm.cost || item.cost,
-            }
-          : item,
-      ),
-    )
-    setEditingItem(null)
-    setEditForm({})
+    try {
+      await updateRoadmapItem(editingItem, {
+        title: editForm.title,
+        address: editForm.address,
+        description: editForm.description,
+        hours: editForm.hours,
+        cost: editForm.cost,
+      })
+      setEditingItem(null)
+      setEditForm({})
+    } catch (err) {
+      console.error('Failed to update item:', err)
+    }
   }
 
   const cancelEdit = () => {
@@ -214,38 +229,48 @@ export default function TravelRoadmap() {
     setEditForm({})
   }
 
-  const addNewItem = () => {
+  const addNewItem = async () => {
     if (!newItemForm.title || !newItemForm.address) return
 
-    const newItem: RoadmapItem = {
-      id: Date.now().toString(),
-      title: newItemForm.title,
-      address: newItemForm.address,
-      description: newItemForm.description || "",
-      hours: newItemForm.hours,
-      category: newItemForm.category as RoadmapItem["category"],
-      completed: false,
-      cost: newItemForm.cost || 0,
+    try {
+      await addRoadmapItem({
+        title: newItemForm.title,
+        address: newItemForm.address,
+        description: newItemForm.description || "",
+        hours: newItemForm.hours,
+        category: newItemForm.category as RoadmapItem["category"],
+        completed: false,
+        cost: newItemForm.cost || 0,
+        order_index: roadmapItems.length,
+      })
+      setNewItemForm({
+        title: "",
+        address: "",
+        description: "",
+        hours: "",
+        category: "stop",
+        cost: 0,
+      })
+      setShowAddForm(false)
+    } catch (err) {
+      console.error('Failed to add item:', err)
     }
-
-    setRoadmapItems((items) => [...items, newItem])
-    setNewItemForm({
-      title: "",
-      address: "",
-      description: "",
-      hours: "",
-      category: "stop",
-      cost: 0,
-    })
-    setShowAddForm(false)
   }
 
-  const deleteItem = (id: string) => {
-    setRoadmapItems((items) => items.filter((item) => item.id !== id))
+  const deleteItem = async (id: string) => {
+    try {
+      await deleteRoadmapItem(id)
+    } catch (err) {
+      console.error('Failed to delete item:', err)
+    }
   }
 
-  const toggleComplete = (id: string) => {
-    setRoadmapItems((items) => items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item)))
+  const toggleComplete = async (id: string) => {
+    try {
+      await toggleRoadmapItemComplete(id)
+    } catch (err) {
+      console.error('Failed to toggle item:', err)
+    }
   }
 
   const openGoogleMaps = (address: string) => {
@@ -254,40 +279,83 @@ export default function TravelRoadmap() {
     window.open(url, "_blank")
   }
 
-  const progressPercentage = (completedCount / roadmapItems.length) * 100
-
-  const addCostItem = () => {
+  const addCostItem = async () => {
     if (!newCostForm.title || !newCostForm.amount) return
 
-    const newCostItem: CostItem = {
-      id: Date.now().toString(),
-      title: newCostForm.title,
-      amount: newCostForm.amount,
-      category: newCostForm.category as CostItem["category"],
-      date: newCostForm.date,
-      completed: true, // Cost items are marked as spent when added
+    try {
+      await addExpense({
+        title: newCostForm.title,
+        amount: newCostForm.amount,
+        category: newCostForm.category as CostItem["category"],
+        date: newCostForm.date || new Date().toISOString().split("T")[0],
+        completed: true, // Cost items are marked as spent when added
+      })
+      setNewCostForm({
+        title: "",
+        amount: 0,
+        category: "misc",
+        date: new Date().toISOString().split("T")[0],
+      })
+      setShowAddCostForm(false)
+    } catch (err) {
+      console.error('Failed to add expense:', err)
     }
-
-    setCostItems((items) => [...items, newCostItem])
-    setNewCostForm({
-      title: "",
-      amount: 0,
-      category: "misc",
-      date: new Date().toISOString().split("T")[0],
-    })
-    setShowAddCostForm(false)
   }
 
-  const deleteCostItem = (id: string) => {
-    setCostItems((items) => items.filter((item) => item.id !== id))
+  const deleteCostItem = async (id: string) => {
+    try {
+      await deleteExpense(id)
+    } catch (err) {
+      console.error('Failed to delete expense:', err)
+    }
   }
 
-  const saveBudget = () => {
-    setEditingBudget(false)
+  const saveBudget = async () => {
+    if (!roadmap) return
+
+    try {
+      await updateRoadmap({ budget: roadmap.budget })
+      setEditingBudget(false)
+    } catch (err) {
+      console.error('Failed to update budget:', err)
+    }
   }
 
-  const totalCost = totalRoadmapCost + totalAdditionalCosts
-  const completedCost = completedRoadmapCost + totalAdditionalCosts
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading your roadmap...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center text-red-600">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="w-full mt-4"
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -299,6 +367,34 @@ export default function TravelRoadmap() {
           </div>
           <p className="text-muted-foreground text-base sm:text-lg mb-2">Your journey from Sterling, VA to Blacksburg, VA</p>
           <p className="text-xs sm:text-sm text-muted-foreground">Track your progress and manage costs efficiently</p>
+          
+          {/* Auth Section */}
+          <div className="flex items-center justify-center gap-4 mt-4">
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>{user.email}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="text-xs"
+                >
+                  <LogOut className="h-3 w-3 mr-1" />
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <AuthModal>
+                <Button variant="outline" size="sm">
+                  <User className="h-4 w-4 mr-2" />
+                  Sign In
+                </Button>
+              </AuthModal>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -352,8 +448,12 @@ export default function TravelRoadmap() {
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        value={budget}
-                        onChange={(e) => setBudget(Number.parseFloat(e.target.value) || 0)}
+                        value={roadmap?.budget || 0}
+                        onChange={(e) => {
+                          if (roadmap) {
+                            updateRoadmap({ budget: Number.parseFloat(e.target.value) || 0 })
+                          }
+                        }}
                         className="w-24 h-8 text-right"
                       />
                       <Button size="sm" onClick={saveBudget}>
@@ -361,7 +461,7 @@ export default function TravelRoadmap() {
                       </Button>
                     </div>
                   ) : (
-                    <span className="text-lg font-bold text-foreground">${budget}</span>
+                    <span className="text-lg font-bold text-foreground">${roadmap?.budget || 0}</span>
                   )}
                 </div>
 
@@ -387,11 +487,11 @@ export default function TravelRoadmap() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Budget Usage</span>
-                    <span>{Math.round((totalSpent / budget) * 100)}%</span>
+                    <span>{roadmap?.budget ? Math.round((totalSpent / roadmap.budget) * 100) : 0}%</span>
                   </div>
                   <Progress
-                    value={Math.min((totalSpent / budget) * 100, 100)}
-                    className={`h-2 ${totalSpent > budget ? "[&>div]:bg-red-500" : ""}`}
+                    value={roadmap?.budget ? Math.min((totalSpent / roadmap.budget) * 100, 100) : 0}
+                    className={`h-2 ${roadmap?.budget && totalSpent > roadmap.budget ? "[&>div]:bg-red-500" : ""}`}
                   />
                 </div>
 
@@ -654,7 +754,7 @@ export default function TravelRoadmap() {
         </div>
 
         {/* Expense History Section */}
-        {costItems.length > 0 && (
+        {expenses.length > 0 && (
           <Card className="mb-4 sm:mb-6 border-2">
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -664,7 +764,7 @@ export default function TravelRoadmap() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {costItems.map((expense) => (
+                {expenses.map((expense) => (
                   <div
                     key={expense.id}
                     className="flex items-center justify-between p-2 sm:p-3 bg-muted/30 rounded-lg border"
@@ -680,7 +780,7 @@ export default function TravelRoadmap() {
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-sm sm:text-base text-foreground truncate">{expense.title}</div>
                         <div className="text-xs sm:text-sm text-muted-foreground">
-                          {expense.date && new Date(expense.date).toLocaleDateString()}
+                          {new Date(expense.date).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
