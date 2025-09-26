@@ -131,7 +131,7 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
           </CardTitle>
           <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" type="button">
                 <Plus className="h-4 w-4 mr-2" />
                 New Roadmap
               </Button>
@@ -168,10 +168,10 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
                   />
                 </div>
                 <div className="flex gap-3 justify-end">
-                  <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+                  <Button variant="outline" onClick={() => setShowCreateForm(false)} type="button">
                     Cancel
                   </Button>
-                  <Button onClick={createRoadmap} disabled={!formData.title.trim()}>
+                  <Button onClick={createRoadmap} disabled={!formData.title.trim()} type="button">
                     Create Roadmap
                   </Button>
                 </div>
@@ -194,7 +194,7 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
         ) : roadmaps.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No roadmaps found</p>
-            <Button onClick={() => setShowCreateForm(true)}>
+            <Button onClick={() => setShowCreateForm(true)} type="button">
               <Plus className="h-4 w-4 mr-2" />
               Create Your First Roadmap
             </Button>
@@ -240,6 +240,7 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
                       size="sm"
                       onClick={() => onRoadmapSelect(roadmap.id)}
                       disabled={currentRoadmapId === roadmap.id}
+                      type="button"
                     >
                       {currentRoadmapId === roadmap.id ? 'Active' : 'Select'}
                     </Button>
@@ -247,6 +248,7 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
                       variant="ghost"
                       size="sm"
                       onClick={() => startEditing(roadmap)}
+                      type="button"
                     >
                       <Edit3 className="h-4 w-4" />
                     </Button>
@@ -255,6 +257,7 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
                       size="sm"
                       onClick={() => deleteRoadmap(roadmap.id)}
                       className="text-red-500 hover:text-red-600"
+                      type="button"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -299,10 +302,10 @@ export function RoadmapManager({ onRoadmapSelect, currentRoadmapId }: RoadmapMan
                 />
               </div>
               <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={cancelEdit}>
+                <Button variant="outline" onClick={cancelEdit} type="button">
                   Cancel
                 </Button>
-                <Button onClick={updateRoadmap} disabled={!formData.title.trim()}>
+                <Button onClick={updateRoadmap} disabled={!formData.title.trim()} type="button">
                   Update Roadmap
                 </Button>
               </div>
