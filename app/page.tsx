@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AuthModal } from "@/components/auth/AuthModal"
+import { DebugInfo } from "@/components/DebugInfo"
 import { useAuth } from "@/hooks/useAuth"
 import { useRoadmap } from "@/hooks/useRoadmap"
 import {
@@ -337,22 +338,25 @@ export default function TravelRoadmap() {
   if (error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center text-red-600">Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="w-full mt-4"
-            >
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-2xl space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center text-red-600">Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="w-full mt-4"
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+          <DebugInfo />
+        </div>
       </div>
     )
   }
